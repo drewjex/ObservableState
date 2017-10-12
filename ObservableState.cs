@@ -1,4 +1,5 @@
-﻿using SkyTrack.Annotations;
+using SkyTrack.Annotations;
+using SkyWest.Common.WPF;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -11,9 +12,9 @@ using System.Threading.Tasks;
 
 namespace SkyTrack.LaborSetup.ViewModels.AppState
 {
-    class ObservableState : INotifyPropertyChanged, ICloneable
+    abstract class ObservableState : INotifyPropertyChanged, ICloneable
     {
-        private bool _isLoading;
+        public bool _isLoading;
         public Dictionary<string, Action<object>> EventHandlers;
 
         public ObservableState(Dictionary<string, Action<object>> eventHandlers, Dictionary<string, Action> commandHandlers=null)
@@ -22,7 +23,8 @@ namespace SkyTrack.LaborSetup.ViewModels.AppState
             _isLoading = false;
         }
 
-        public bool IsLoading
+        [Order]
+        public virtual bool IsLoading
         {
             get { return _isLoading; }
             set
@@ -34,10 +36,8 @@ namespace SkyTrack.LaborSetup.ViewModels.AppState
             }
         }
 
-        public void Copy()
+        public ObservableState Copy(ObservableState state)
         {
-            IsLoading = true;
-
             IEnumerable<PropertyInfo> properties =
                 from property in this.GetType().GetProperties()
                 let orderAttribute = property.GetCustomAttributes(typeof(OrderAttribute), false).SingleOrDefault() as OrderAttribute
@@ -46,18 +46,22 @@ namespace SkyTrack.LaborSetup.ViewModels.AppState
 
             foreach (PropertyInfo prop in properties)
             {
-                PropertyInfo currentProp = this.GetType().GetProperty(prop.Name);
-                if (currentProp.PropertyType.Name != "ObservableCollection`1")
+                PropertyInfo currentProp = state.GetType().GetProperty(prop.Name);
+                if (currentProp.PropertyType.Name != "ObservableCollection`1" && currentProp.PropertyType.Name != "TrulyObservableCollection`1")
                 {
-                    currentProp.SetValue(this, prop.GetValue(this), null);
+                    if (currentProp.CanWrite)
+                        currentProp.SetValue(state, prop.GetValue(this), null);
                 }
                 else 
                 {
-                    currentProp.SetValue(this, new ObservableCollection<object>((ObservableCollection<object>)prop.GetValue(this)), null);
+                    if (currentProp.CanWrite)
+                    {
+                        currentProp.SetValue(state, new ObservableCollection<object>((ObservableCollection<object>)prop.GetValue(this)), null);
+                    }
                 }
             }
 
-            IsLoading = false;
+            return state;
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -74,7 +78,7 @@ namespace SkyTrack.LaborSetup.ViewModels.AppState
             }
         }
 
-        public object Clone()
+        public virtual object Clone()
         {
             return MemberwiseClone();
         }
