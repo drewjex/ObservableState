@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace SkyTrack.LaborSetup.ViewModels.AppState
 {
@@ -16,11 +17,19 @@ namespace SkyTrack.LaborSetup.ViewModels.AppState
     {
         public bool _isLoading;
         public Dictionary<string, Action<object>> EventHandlers;
+        public Dictionary<string, ICommand> _commands;
 
         public ObservableState(Dictionary<string, Action<object>> eventHandlers, Dictionary<string, Action> commandHandlers=null)
         {
             EventHandlers = eventHandlers;
+            _commands = new Dictionary<string, ICommand>();
             _isLoading = false;
+
+            //COMMAND EVENT HANDLERS
+            foreach (KeyValuePair<string, Action> entry in commandHandlers)
+            {
+                Commands.Add(entry.Key, new RelayCommand(entry.Value));
+            }
         }
 
         [Order]
@@ -32,6 +41,19 @@ namespace SkyTrack.LaborSetup.ViewModels.AppState
                 if (_isLoading == value)
                     return;
                 _isLoading = value;
+                OnPropertyChanged();
+            }
+        }
+
+        [Order]
+        public Dictionary<string, ICommand> Commands
+        {
+            get { return _commands; }
+            set
+            {
+                if (_commands == value)
+                    return;
+                _commands = value;
                 OnPropertyChanged();
             }
         }
